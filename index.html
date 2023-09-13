@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StyleCap: Automatic Speaking-Style Captioning from Speech Based on Speech and Language Self-supervised Learning Models</title>
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="./stylesheet.css">
+</head>
+<header>
+  <h1 class="head-1">
+    <a><br>StyleCap: Automatic Speaking-Style Captioning from Speech<br>Based on Speech and Language Self-supervised Learning Models</a>
+  </h1>	
+  <h3 class="head-2">
+    <a>Kazuki Yamauchi<sup>*</sup>, Yusuke Ijima<sup>†</sup>, Yuki Saito<sup>*</sup><br><sup>*</sup>The University of Tokyo, Japan, <sup>†</sup>NTT Corporation, Japan.</a>
+  </h3>	
+</header>
+
+<body>
+  <h2 class="style-1">Abstract</h2>
+  <p>
+    We propose <b><em>StyleCap</em></b>, a method to generate natural language description of speaking styles appearing in speech.
+    Although most of conventional techniques for para-/non-linguistic information recognition focus on the category classification or the intensity estimation of pre-defined labels, they cannot provide the reasoning of the recognition results with an interpretable manner.
+    As a first step towards an end-to-end method for generating speaking-style prompt from speech, i.e., <b><em>automatic speaking-style captioning</em></b>, our StyleCap uses paired data of speech and natural language description to train neural networks that predict prefix vectors fed into a large language model (LLM)-based text decoder from a speech representation vector.
+    We explore an appropriate LLM decoder and speech feature representation suitable for this new task.
+    The experimental results show that the use of self-supervised speech representation and LLM-based similar sentence augmentation improves the captioning evaluation criteria such as METEOR and distinct-1/2.
+  </p>
+
+  <h2 class="style-1">Content</h2>
+  <ul>
+    <li><a href="#section1">1. Dataset</a></li>
+    <li><a href="#section2">2. Data augmentation based on similar sentence generation</a></li>
+    <li><a href="#section3">3. Samples of generated captions</a></li>
+  </ul>
+
+  <a name="section1"></a>
+  <h2 class="style-1">1. Dataset</h2>
+  <p>
+    We used <b>PromptSpeech</b> <a href="#ref1">[1]</a>, which includes paired data of speech and natural language instructions (style prompt), for the model training.
+    We used the real subset of PromptSpeech, which consists of speech from <b>LibriTTS</b> <a href="#ref2">[2]</a> and those natural language descriptions annotated by linguistic experts.
+    The training data of PromptSpeech were divided into three subsets; 24,953 utterances by 1,113 speakers, 857 by 40, and 778 by 38 in accordance with LibriTTS for training, development, and test respectively.
+  </p>
+  <p>
+    The related data is available for download from the following link.<br>
+    ・<a href="https://speechresearch.github.io/prompttts/" target=”_blank”>PromptSpeech</a><br>
+    ・<a href="http://www.openslr.org/60/" target=”_blank”>LibriTTS corpus</a><br>
+    ・<a href="./train_dev_test_set.zip" download>train_dev_test_set.zip</a> (Each subset's file id list)
+  </p>
+
+  <a name="section2"></a>
+  <h2 class="style-1">2. Data augmentation based on similar sentence generation</h2>
+  <p>
+    We introduce a data augmentation strategy using an LLM to increase the diversity of speaking-style prompts in the training data.
+    Specifically, we first ask the pre-trained <b>Llama 2-Chat (7B)</b> <a href="#ref3">[3]</a>, which is an LLM optimized for dialogue use cases, to generate five sentences from one given sentence based on the following prompt:
+  </p>
+  <p>
+    <em>"Rewrite the following sentence that describes someone's style of speaking in a different way, keeping the meaning of the original description. Original Description: [subject to be rephrased]."</em>
+  </p>
+  <p>
+    Then, we select one sentence from the five rephrased sentences based on their BERTScore <a href="#ref4">[4]</a> values: i.e., we pick up a sentence with the highest score <b>if the score is higher than 0.80</b>.
+  </p>
+
+  <h3 class="style-1">Samples of similar sentence generation</h3>
+
+  <div class="table-container">
+    <table>
+      <tbody>
+        <tr>
+          <td style="text-align:center">Original caption</td>
+          <td style="text-align:center">Rewritten caption</td>
+        </tr>
+        <tr>
+          <td>His sound height is normal, but the speed is very fast, and the volume is very low.</td>
+          <td>His voice is normal in tone, but he speaks with a rapid pace and a soft volume.</td>
+        </tr>
+        <tr>
+          <td>A man talking slowly, but the sound is high.</td>
+          <td>A man speaking at a measured pace, with a soaring tone.</td>
+        </tr>
+        <tr>
+          <td>A woman uses a relatively low tone and fast speaking speed and say loudly.</td>
+          <td>A woman speaks with a mellow tone and rapid-fire delivery, her words tumbling out quickly.</td>
+        </tr>
+        <tr>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>A woman's voice is soft, yet her pitch is incredibly high.</td>
+        </tr>
+        <tr>
+          <td>The speaking speed of women is very slow, but her voice is very sharp and her sound is quiet.</td>
+          <td>Her speaking style is slow and deliberate, but her voice is sharp and her tone is gentle.</td>
+        </tr>
+        <tr>
+          <td>She has a normal volume, but she speaks very slowly her sound height is really high.</td>
+          <td>She has a standard volume, but her speech is glacially paced.</td>
+        </tr>
+        <tr>
+          <td>A boy speaks very slowly, but his tone is very high.</td>
+          <td>The boy speaks at a deliberate pace, but his voice is pitched at an unusual height.</td>
+        </tr>
+        <tr>
+          <td>Please generate a man with a loud sound, but a very low tone to speak.</td>
+          <td>The man has a booming voice, but speaks in a mellow tone.</td>
+        </tr>
+        <tr>
+          <td>Loud volume, masculine, high sound, but his speed is no different from ordinary people.</td>
+          <td>Loud pitch, rugged tone, same velocity as average folks.</td>
+        </tr>
+        <tr>
+          <td>Ask a lady to talk loudly at a relatively high tone and very slow speaking speed.</td>
+          <td>Ask a lady to speak animatedly at a slightly higher pitch and very slow speech rate.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <a name="section3"></a>
+  <h2 class="style-1">3. Samples of generated captions</h2>
+  <p>
+    In this section, we present samples of generated captions for the test set using each of the comparison models explained in section 3.2 of our paper.
+    The table shows the inference results of each model when trained both without data augmentation and with data augmentation.
+  </p>
+
+  <div class="table-container">
+    <table>
+      <tbody>
+        <tr>
+          <td colspan="2" style="text-align:center">Speech</td>
+          <td><audio src="./wav/1089_134686_000022_000000.wav" controls></audio></td>
+          <td><audio src="./wav/4970_29093_000050_000007.wav" controls></audio></td>
+          <td><audio src="./wav/7176_88083_000014_000000.wav" controls></audio></td>
+          <td><audio src="./wav/1320_122612_000019_000003.wav" controls></audio></td>
+          <td><audio src="./wav/1580_141083_000015_000000.wav" controls></audio></td>
+          <td><audio src="./wav/237_134493_000009_000000.wav" controls></audio></td>
+          <td><audio src="./wav/4446_2275_000033_000002.wav" controls></audio></td>
+          <td><audio src="./wav/4992_23283_000041_000000.wav" controls></audio></td>
+          <td><audio src="./wav/7127_75946_000017_000000.wav" controls></audio></td>
+          <td><audio src="./wav/5683_32865_000013_000002.wav" controls></audio></td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align:center">Ground truth caption</td>
+          <td>His tone is so high, the volume is very large, and he speak very fast.</td>
+          <td>Low volume, but her speed is no different from ordinary people.</td>
+          <td>When a man is very loud but the tone is very low.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her voice is big, but the speed of speech is extremely fast.</td>
+          <td>A female bass normal speed and whispering.</td>
+          <td>Please help me generate a woman with normal tone but low speaking volume and slow speaking speed.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>This woman whispered, her speech was very slow, but her voice was very shrilly.</td>
+        </tr>
+
+        <tr>
+          <td colspan="2" class="fixed-cell"><h3>Without data augmentation based on similar sentence generation</h3></td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">Transformer-based encoder-decoder</td>
+          <td style="text-align:center">mel-spectrogram</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>Please give me a normal tone with fast speaking and small voicewomen speak.</td>
+          <td>A male bass whispering in low pitch.</td>
+          <td>Normal tone, this man said slowly.</td>
+          <td>A female treble talked normally.</td>
+          <td>Please give me a normal tone with fast speaking and small voicewomen speak.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>A man who speaks very slowly, but he has a high tone.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>Please generate a man who speaks very slowly for mehis speaking pitch and volume are very low.</td>
+          <td>A female treble talked normally.</td>
+          <td>Please give me a man low voice that speaks in a hurry and loudly.</td>
+          <td>A man at low speed and low pitch say.</td>
+          <td>A female treble talked normally.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>Ask a boy with louder voice to say slowly.</td>
+          <td>Please generate a slow female voice.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>Please help me generate a woman with normal tone but low speaking volume and slow speaking speed.</td>
+          <td>When a man is very loud but the tone is very low.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>High tone key, fast language, normal volume, female.</td>
+          <td>Her sound height is normal, but the speed is fast, the sound is very loud.</td>
+          <td>She said with her bass.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>This woman whispered, her speech was very slow, but her voice was very shrilly.</td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">StyleCap w/ GPT-2 (proposed)</td>
+          <td style="text-align:center">mel-spectrogram + aggregation module</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>A male bass said slowly and loudly.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>High tone key, fast language, normal volume, female.</td>
+          <td>Her sound height is normal, but the speed of speech is extremely fast, the sound is very loud.</td>
+          <td>Her unique bass said.</td>
+          <td>Please generate a woman with normal tone but low speaking volume and slow speaking speed for me.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>Please generate a man with a loud voice to say slowly.</td>
+          <td>Please generate a slow speaking female treble.</td>
+          <td>Please generate a faster man low voice for me, his tone is very low.</td>
+          <td>Normal tone, this man said slowly.</td>
+          <td>Please give me a normal tone but the sound is very quiet.</td>
+          <td>Ask a girl with a loud voice to speak quicklythe requirement is that her tone is relatively high.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>Ask a boy with a loud voice to say a word quickly.</td>
+          <td>Please generate a woman with normal tone but low speaking volume and slow speaking speed for me.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM + aggregation module</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>Please generate a woman with normal tone but low speaking volume and slow speaking speed for me.</td>
+          <td>Men who have a loud voice but low tone for you.</td>
+          <td>Ask a boy with a loud voice to say slowly.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>Her voice is normal, but the speed of speech is extremely fast, the sound is very loud.</td>
+          <td>Use her bass to say.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>This woman whispered, her speech was very slow, but her voice was very shrilly.</td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">StyleCap w/ Llama2 (proposed)</td>
+          <td style="text-align:center">mel-spectrogram + aggregation module</td>
+          <td>His tone is so high, the volume is very large, and he speaks quickly.</td>
+          <td>Please give me a woman with a loud sound and normal tone for me.</td>
+          <td>A man bass said slowly.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>Her voice is big, but the speed of speech is extremely fast.</td>
+          <td>There is a woman who speaks slowly, with normal volume and low pitch.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>Please generate a faster man low voice.</td>
+          <td>A man who says a normal voice of normal volume.</td>
+          <td>Please give me a normal tone and a low volume that speaks a fast voicewomen speak.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>Please generate a fast male voice for me, his tone and speed speed are normal.</td>
+          <td>A female treble talked normally.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM + aggregation module</td>
+          <td>His tone is so high, the volume is very large, and he speak very fast.</td>
+          <td>Please give me a woman with normal tone but low speaking volume and slow speaking speed.</td>
+          <td>When a man is very loud but the tone is very low.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her voice is big, but the speed of speech is extremely fast.</td>
+          <td>She said with her bass.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>This woman whispered, her speech was very slow, but her voice was very shrilly.</td>
+        </tr>
+
+
+        <tr>
+          <td colspan="2" class="fixed-cell"><h3>With data augmentation based on similar sentence generation</h3></td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">Transformer-based encoder-decoder</td>
+          <td style="text-align:center">mel-spectrogram</td>
+          <td>His tone is so high, the volume is very large, and he speak very fast.</td>
+          <td>Please give me a normal tone with fast speaking and small voicewomen speak.</td>
+          <td>A man bass said slowly.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>A female treble talked normally.</td>
+          <td>Please give me a normal tone with fast speaking and small voicewomen speak.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>Please generate a man who speaks very slowly for mehis speaking pitch and volume are very low.</td>
+          <td>A female treble talked normally.</td>
+          <td>Please generate a faster man low voice.</td>
+          <td>A man who says a normal voice of normal volume.</td>
+          <td>A female treble talked normally.</td>
+          <td>A female treble talked normally.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>Please generate a slow speaking female voice.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>A male bass said slowly and loudly.</td>
+          <td>A man speaks average, a normal tone general tone.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>Her voice is big, but the speed of speech is extremely fast.</td>
+          <td>She said with her bass.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>The speaking speed of women is very slow, but her voice is very sharp and her sound is quiet.</td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">StyleCap w/ GPT-2 (proposed)</td>
+          <td style="text-align:center">mel-spectrogram + aggregation module</td>
+          <td>He speaks loudly, his volume is very high, and he speaks quickly.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>A male bass said slowly and loudly.</td>
+          <td>Normal tone, this man said slowly.</td>
+          <td>A female treble talked normally.</td>
+          <td>Her voice is fast and low, the sound is very loud.</td>
+          <td>Her unique bass said.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>The speaking speed of women is very slow, but her voice is very shrilly.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>Please generate a man with a loud voice for mehis pitch and volume are very low.</td>
+          <td>Please generate a woman with normal tone but low speaking volume and slow speaking speed.</td>
+          <td>Ask a boy with a loud voice to say a word quickly.</td>
+          <td>Normal tone, this man said slowly.</td>
+          <td>Normal tone, this woman said quickly.</td>
+          <td>Ask a girl with a loud voice to say quicklythe requirement is that she speak in a relatively high tone.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a slow female voice.</td>
+          <td>Ask a boy with a loud voice to say a word quickly.</td>
+          <td>Please generate a woman with normal tone but low speaking volume and slow speaking speed for me.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM + aggregation module</td>
+          <td>His tone is very high, the volume is very large, and he speak quickly.</td>
+          <td>A woman's voice is so quiet, but her speed is very high.</td>
+          <td>When a man has a loud voice but a very low tone to speak.</td>
+          <td>He speaks in a loud voice.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her voice is normal, but the speed is fast.</td>
+          <td>She said with her bass.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>This woman whispered, her speech was very slow, but her voice was very shrilly.</td>
+        </tr>
+        <tr>
+          <td rowspan="3" style="text-align:center">StyleCap w/ Llama2 (proposed)</td>
+          <td style="text-align:center">mel-spectrogram + aggregation module</td>
+          <td>His tone is so high, the volume is very large, and he speak very fast.</td>
+          <td>Please give me a normal tone with fast speaking and small voicewomen speak.</td>
+          <td>A man bass said slowly.</td>
+          <td>A man who says a normal voice of normal volume.</td>
+          <td>A female treble talked normally.</td>
+          <td>Her sound height is normal, but the speed of speech is extremely fast, but the sound is very loud.</td>
+          <td>A woman who speaks very slowly, her tone is very low, she said loudly.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">xvector</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>Please generate a faster man low voice.</td>
+          <td>A man who says a normal voice of normal volume.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>A female treble talked normally.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Her tone is very low, her speech is very slow, and her voice is very small.</td>
+          <td>Please generate a fast male voice for me, his tone and speed speed are normal.</td>
+          <td>A female treble talked normally.</td>
+        </tr>
+        <tr>
+          <td style="text-align:center">WavLM + aggregation module</td>
+          <td>His sound height is really high, the volume is very large, and he speaks quickly.</td>
+          <td>A woman's voice is so quiet, but the tone is very high.</td>
+          <td>When a man is very loud but the tone is very low.</td>
+          <td>He speaks loudly.</td>
+          <td>Let a girl with a sharp tone fast but the sound is very quiet.</td>
+          <td>Her voice is big, but the speed of speech is extremely fast.</td>
+          <td>She said with her bass.</td>
+          <td>Please generate a slow speaking female voice.</td>
+          <td>This man said loudly that his speed is very slow, but the pitch is high.</td>
+          <td>The speaking speed of women is very slow, but her voice is very sharp and her sound is quiet.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h2 class="style-1">References</h2>
+  <ul class="custom-list">
+      <li><a name="ref1"></a>Z. Guo, Y. Leng, Y. Wu, et al., "PromptTTS: Controllable text-to-speech with text descriptions," in ICASSP, 2023.</li>
+      <li><a name="ref2"></a>H. Zen, V. Dang, R. Clark, et al., "LibriTTS: A corpus de- rived from lib- rispeech for text-to-speech," in Proc. INTER- SPEECH, 2019, pp. 1526-1530.</li>
+      <li><a name="ref3"></a>H. Touvron, L. Martin, K. Stone, et al., “Llama 2: Open foundation and fine-tuned chat models,” arXiv preprint, vol. 2307.09288, 2023.</li>
+      <li><a name="ref4"></a>T. Zhang, V. Kishore, F. Wu, et al., “BERTScore: Evaluating text generation with BERT,” in Proc. ICLR, 2020.</li>
+  </ul>
+
+  <footer></footer>
+</body>
+  
