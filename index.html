@@ -19,48 +19,49 @@
 <body>
   <h2 class="style-1">Abstract</h2>
   <p>
-    We propose <b><em>StyleCap</em></b>, a method to generate natural language description of speaking styles appearing in speech.
-    Although most of conventional techniques for para-/non-linguistic information recognition focus on the category classification or the intensity estimation of pre-defined labels, they cannot provide the reasoning of the recognition results with an interpretable manner.
-    As a first step towards an end-to-end method for generating speaking-style prompt from speech, i.e., <b><em>automatic speaking-style captioning</em></b>, our StyleCap uses paired data of speech and natural language description to train neural networks that predict prefix vectors fed into a large language model (LLM)-based text decoder from a speech representation vector.
-    We explore an appropriate LLM decoder and speech feature representation suitable for this new task.
-    The experimental results show that the use of self-supervised speech representation and LLM-based similar sentence augmentation improves the captioning evaluation criteria such as METEOR and distinct-1/2.
+    We propose <b><em>StyleCap</em></b>, a method to generate natural language descriptions of speaking styles appearing in speech.
+    Although most of conventional techniques for para-/non-linguistic information recognition focus on the category classification or the intensity estimation of pre-defined labels, they cannot provide the reasoning of the recognition result in an interpretable manner.
+    As a first step towards an end-to-end method for generating speaking-style prompts from speech, i.e., <b><em>automatic speaking-style captioning</em></b>, our StyleCap uses paired data of speech and natural language descriptions to train neural networks that predict prefix vectors fed into a large language model (LLM)-based text decoder from a speech representation vector.
+    We explore an appropriate text decoder and speech feature representation suitable for this new task.
+    The experimental results demonstrate that our StyleCap leveraging richer LLMs for the text decoder, speech self-supervised learning (SSL) features, and sentence rephrasing augmentation improves the accuracy and diversity of generated speaking-style captions.
   </p>
 
   <h2 class="style-1">Content</h2>
   <ul>
     <li><a href="#section1">1. Dataset</a></li>
-    <li><a href="#section2">2. Data augmentation based on similar sentence generation</a></li>
+    <li><a href="#section2">2. Data augmentation by rephrasing sentences using an LLM</a></li>
     <li><a href="#section3">3. Samples of generated captions</a></li>
   </ul>
 
   <a name="section1"></a>
   <h2 class="style-1">1. Dataset</h2>
   <p>
-    We used <b>PromptSpeech</b> <a href="#ref1">[1]</a>, which includes paired data of speech and natural language instructions (style prompt), for the model training.
-    We used the real subset of PromptSpeech, which consists of speech from <b>LibriTTS</b> <a href="#ref2">[2]</a> and those natural language descriptions annotated by linguistic experts.
-    The training data of PromptSpeech were divided into three subsets; 24,953 utterances by 1,113 speakers, 857 by 40, and 778 by 38 in accordance with LibriTTS for training, development, and test respectively.
+    We used <b>PromptSpeech</b> <a href="#ref1">[1]</a>, which includes natural language instructions (style prompt) of various speaking styles.
+    This dataset was constructed for <b>PromptTTS</b> <a href="#ref1">[1]</a> that can synthesize speech in accordance with a style prompt.
+    We used the training subset of PromptSpeech real version, which includes 26,588 human-annotated style prompts of multi-speakers' speech samples from <b>LibriTTS</b> <a href="#ref2">[2]</a>.
+    We divided the 26,588 prompts into training (24,953 by 1,113 speakers), development (857 by 40), and test (778 by 38) subsets and paired them with the corresponding speech samples from LibriTTS.
   </p>
   <p>
     The related data is available for download from the following link.<br>
-    ・<a href="https://speechresearch.github.io/prompttts/" target=”_blank”>PromptSpeech</a><br>
-    ・<a href="http://www.openslr.org/60/" target=”_blank”>LibriTTS corpus</a><br>
+    ・<a href="https://speechresearch.github.io/prompttts/" target="_blank">PromptSpeech</a><br>
+    ・<a href="http://www.openslr.org/60/" target="_blank">LibriTTS corpus</a><br>
     ・<a href="./train_dev_test_set.zip" download>train_dev_test_set.zip</a> (Each subset's file id list)
   </p>
 
   <a name="section2"></a>
-  <h2 class="style-1">2. Data augmentation based on similar sentence generation</h2>
+  <h2 class="style-1">2. Data augmentation by rephrasing sentences using an LLM</h2>
   <p>
-    We introduce a data augmentation strategy using an LLM to increase the diversity of speaking-style prompts in the training data.
-    Specifically, we first ask the pre-trained <b>Llama 2-Chat (7B)</b> <a href="#ref3">[3]</a>, which is an LLM optimized for dialogue use cases, to generate five sentences from one given sentence based on the following prompt:
+    We introduce sentence rephrasing augmentation using an LLM to increase the diversity of speaking-style descriptions in the training data.
+    Specifically, we first ask the pre-trained <b>Llama 2-Chat (7B)</b> <a href="#ref3">[3]</a>, which is an LLM optimized for dialogue use cases, to generate five sentences from one given sentence on the basis of the following prompt: 
   </p>
   <p>
     <em>"Rewrite the following sentence that describes someone's style of speaking in a different way, keeping the meaning of the original description. Original Description: [subject to be rephrased]."</em>
   </p>
   <p>
-    Then, we select one sentence from the five rephrased sentences based on their BERTScore <a href="#ref4">[4]</a> values: i.e., we pick up a sentence with the highest score <b>if the score is higher than 0.80</b>.
+    Then, we select one sentence from the five rephrased sentences on the basis of their BERTScore <a href="#ref4">[4]</a> values: i.e., we pick on the sentence with the highest score <b>if the score is higher than 0.80</b>.
   </p>
 
-  <h3 class="style-1">Samples of similar sentence generation</h3>
+  <h3 class="style-1">Samples of sentence rephrasing</h3>
 
   <div class="table-container">
     <table>
@@ -118,7 +119,7 @@
   <h2 class="style-1">3. Samples of generated captions</h2>
   <p>
     In this section, we present samples of generated captions for the test set using each of the comparison models explained in section 3.2 of our paper.
-    The table shows the inference results of each model when trained both without data augmentation and with data augmentation.
+    The table demonstrates the samples when each model was trained both without sentence rephrasing augmentation and with sentence rephrasing augmentation.
   </p>
 
   <div class="table-container">
@@ -152,7 +153,7 @@
         </tr>
 
         <tr>
-          <td colspan="2" class="fixed-cell"><h3>Without data augmentation based on similar sentence generation</h3></td>
+          <td colspan="2" class="fixed-cell"><h3>Without sentence rephrasing augmentation</h3></td>
         </tr>
         <tr>
           <td rowspan="3" style="text-align:center">Transformer-based encoder-decoder</td>
@@ -277,7 +278,7 @@
 
 
         <tr>
-          <td colspan="2" class="fixed-cell"><h3>With data augmentation based on similar sentence generation</h3></td>
+          <td colspan="2" class="fixed-cell"><h3>With sentence rephrasing augmentation</h3></td>
         </tr>
         <tr>
           <td rowspan="3" style="text-align:center">Transformer-based encoder-decoder</td>
@@ -406,10 +407,10 @@
 
   <h2 class="style-1">References</h2>
   <ul class="custom-list">
-      <li><a name="ref1"></a>Z. Guo, Y. Leng, Y. Wu, et al., "PromptTTS: Controllable text-to-speech with text descriptions," in ICASSP, 2023.</li>
-      <li><a name="ref2"></a>H. Zen, V. Dang, R. Clark, et al., "LibriTTS: A corpus de- rived from lib- rispeech for text-to-speech," in Proc. INTER- SPEECH, 2019, pp. 1526-1530.</li>
-      <li><a name="ref3"></a>H. Touvron, L. Martin, K. Stone, et al., “Llama 2: Open foundation and fine-tuned chat models,” arXiv preprint, vol. 2307.09288, 2023.</li>
-      <li><a name="ref4"></a>T. Zhang, V. Kishore, F. Wu, et al., “BERTScore: Evaluating text generation with BERT,” in Proc. ICLR, 2020.</li>
+      <li><a name="ref1"></a>Z. Guo, Y. Leng, Y. Wu, et al., "PromptTTS: Controllable text-to-speech with text descriptions," in Proc. ICASSP, 2023.</li>
+      <li><a name="ref2"></a>H. Zen, V. Dang, R. Clark, et al., "LibriTTS: A corpus derived from lib- rispeech for text-to-speech," in Proc. INTERSPEECH, 2019, pp. 1526-1530.</li>
+      <li><a name="ref3"></a>H. Touvron, L. Martin, K. Stone, et al., "Llama 2: Open foundation and fine-tuned chat models," arXiv preprint arXiv:2307.09288, 2023.</li>
+      <li><a name="ref4"></a>T. Zhang, V. Kishore, F. Wu, et al., "BERTScore: Evaluating text generation with BERT," in Proc. ICLR, 2020.</li>
   </ul>
 
   <footer></footer>
